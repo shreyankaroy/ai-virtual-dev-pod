@@ -1,0 +1,7 @@
+Generate software project user stories using this structure:
+
+{
+  "epics": [],
+  "user_stories": [],
+  "acceptance_criteria": []
+}
