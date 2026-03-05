@@ -1,0 +1,15 @@
+Return JSON with the following structure:
+
+{
+  "files": [
+    {
+      "filename": "app.py",
+      "content": "complete Python code"
+    }
+  ]
+}
+
+Rules:
+- Return ONLY JSON
+- Do not include explanations
+- Write complete runnable Python code

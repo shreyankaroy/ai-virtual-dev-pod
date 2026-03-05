@@ -1,0 +1,10 @@
+Return JSON with the following structure:
+
+{
+  "architecture_overview": "",
+  "tech_stack": [],
+  "database_schema": "",
+  "api_contracts": []
+}
+
+Return ONLY valid JSON.
