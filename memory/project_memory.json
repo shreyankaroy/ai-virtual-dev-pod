@@ -1,0 +1,160 @@
+{
+  "user_stories": {
+    "stories": [
+      {
+        "title": "User can input workout history",
+        "description": "As a user, I want to input my workout history so that the AI fitness trainer can adapt to my progress.",
+        "acceptance_criteria": [
+          "User can input workout type (e.g., running, weightlifting)",
+          "User can input workout duration and intensity",
+          "User can input workout frequency"
+        ]
+      },
+      {
+        "title": "AI fitness trainer adapts to injuries",
+        "description": "As a user, I want the AI fitness trainer to adapt to my injuries so that I can recover safely and effectively.",
+        "acceptance_criteria": [
+          "AI fitness trainer takes into account user's injury history",
+          "AI fitness trainer generates modified workout plans based on user's injuries",
+          "AI fitness trainer provides injury prevention tips and advice"
+        ]
+      },
+      {
+        "title": "AI fitness trainer adapts to travels",
+        "description": "As a user, I want the AI fitness trainer to adapt to my travels so that I can stay fit and healthy on the go.",
+        "acceptance_criteria": [
+          "AI fitness trainer takes into account user's travel schedule and location",
+          "AI fitness trainer generates workout plans that can be completed in different environments (e.g., hotel gym, outdoor)",
+          "AI fitness trainer provides travel-friendly workout tips and advice"
+        ]
+      },
+      {
+        "title": "User receives personalized workout recommendations",
+        "description": "As a user, I want to receive personalized workout recommendations so that I can achieve my fitness goals.",
+        "acceptance_criteria": [
+          "AI fitness trainer generates workout recommendations based on user's fitness level and goals",
+          "AI fitness trainer takes into account user's workout history and progress",
+          "AI fitness trainer provides detailed workout plans with instructions and videos"
+        ]
+      },
+      {
+        "title": "User can track progress and achievements",
+        "description": "As a user, I want to track my progress and achievements so that I can stay motivated and engaged.",
+        "acceptance_criteria": [
+          "User can view workout history and progress",
+          "User can set and track fitness goals",
+          "User can receive rewards and badges for achievements"
+        ]
+      }
+    ]
+  },
+  "system_design": {
+    "architecture_summary": "Microservices-based system architecture with RESTful APIs for scalability and maintainability.",
+    "components": [
+      {
+        "name": "User Service",
+        "description": "Handles user authentication, injury input, and travel plans."
+      },
+      {
+        "name": "Fitness Service",
+        "description": "Provides personalized workout recommendations, injury prevention, and recovery workouts."
+      },
+      {
+        "name": "Workout Service",
+        "description": "Generates adapted workouts based on user input and travel plans."
+      },
+      {
+        "name": "Database Service",
+        "description": "Stores user data, workout plans, and injury information."
+      },
+      {
+        "name": "Notification Service",
+        "description": "Sends personalized recommendations and notifications to users."
+      }
+    ],
+    "data_flow": [
+      {
+        "source": "User Service",
+        "target": "Fitness Service",
+        "description": "User input and travel plans are sent to the Fitness Service for workout adaptation."
+      },
+      {
+        "source": "Fitness Service",
+        "target": "Workout Service",
+        "description": "Workout recommendations are sent to the Workout Service for generation."
+      },
+      {
+        "source": "Workout Service",
+        "target": "Database Service",
+        "description": "Generated workouts are stored in the Database Service."
+      },
+      {
+        "source": "Database Service",
+        "target": "Notification Service",
+        "description": "Workout plans and injury information are sent to the Notification Service for personalized recommendations."
+      },
+      {
+        "source": "Notification Service",
+        "target": "User Service",
+        "description": "Personalized recommendations are sent back to the User Service for user notification."
+      }
+    ]
+  },
+  "code_plan": {
+    "files": [
+      {
+        "filename": "api.py",
+        "description": "FastAPI endpoints",
+        "code": "\nfrom fastapi import FastAPI\nfrom pydantic import BaseModel\nfrom models import User, Workout, Progress\n\napp = FastAPI()\n\nclass UserIn(BaseModel):\n    user_id: int\n    name: str\n    email: str\n\nclass WorkoutIn(BaseModel):\n    workout_id: int\n    user_id: int\n    exercise: str\n    sets: int\n    reps: int\n\nclass ProgressIn(BaseModel):\n    progress_id: int\n    user_id: int\n    workout_id: int\n    date: str\n    weight: float\n\n@app.post('/users')\nasync def create_user(user: UserIn):\n    return user\n\n@app.get('/users/{user_id}')\nasync def read_user(user_id: int):\n    return {'user_id': user_id}\n\n@app.post('/workouts')\nasync def create_workout(workout: WorkoutIn):\n    return workout\n\n@app.get('/workouts/{workout_id}')\nasync def read_workout(workout_id: int):\n    return {'workout_id': workout_id}\n\n@app.post('/progress')\nasync def create_progress(progress: ProgressIn):\n    return progress\n\n@app.get('/progress/{progress_id}')\nasync def read_progress(progress_id: int):\n    return {'progress_id': progress_id}\n"
+      },
+      {
+        "filename": "models.py",
+        "description": "data models",
+        "code": "\nfrom pydantic import BaseModel\n\nclass User(BaseModel):\n    user_id: int\n    name: str\n    email: str\n\n    def __str__(self):\n        return f'User(user_id={self.user_id}, name={self.name}, email={self.email})'\n\nclass Workout(BaseModel):\n    workout_id: int\n    user_id: int\n    exercise: str\n    sets: int\n    reps: int\n\n    def __str__(self):\n        return f'Workout(workout_id={self.workout_id}, user_id={self.user_id}, exercise={self.exercise}, sets={self.sets}, reps={self.reps})'\n\nclass Progress(BaseModel):\n    progress_id: int\n    user_id: int\n    workout_id: int\n    date: str\n    weight: float\n\n    def __str__(self):\n        return f'Progress(progress_id={self.progress_id}, user_id={self.user_id}, workout_id={self.workout_id}, date={self.date}, weight={self.weight})'\n"
+      },
+      {
+        "filename": "service.py",
+        "description": "business logic",
+        "code": "\nfrom models import User, Workout, Progress\n\nclass UserService:\n    def __init__(self):\n        self.users = []\n\n    def create_user(self, user: User):\n        self.users.append(user)\n        return user\n\n    def get_user(self, user_id: int):\n        for user in self.users:\n            if user.user_id == user_id:\n                return user\n        return None\n\nclass WorkoutService:\n    def __init__(self):\n        self.workouts = []\n\n    def create_workout(self, workout: Workout):\n        self.workouts.append(workout)\n        return workout\n\n    def get_workout(self, workout_id: int):\n        for workout in self.workouts:\n            if workout.workout_id == workout_id:\n                return workout\n        return None\n\nclass ProgressService:\n    def __init__(self):\n        self.progress = []\n\n    def create_progress(self, progress: Progress):\n        self.progress.append(progress)\n        return progress\n\n    def get_progress(self, progress_id: int):\n        for p in self.progress:\n            if p.progress_id == progress_id:\n                return p\n        return None\n"
+      }
+    ]
+  },
+  "tests": {
+    "files": [
+      {
+        "filename": "test_api.py",
+        "description": "tests for API",
+        "code": "\nimport pytest\nfrom fastapi.testclient import TestClient\nfrom api import app, UserIn, WorkoutIn, ProgressIn\n\nclient = TestClient(app)\n\nclass TestAPI:\n    def test_create_user(self):\n        user_in = {'user_id': '1', 'name': 'John Doe', 'email': 'john@example.com'}\n        response = client.post('/users', json=user_in)\n        assert response.status_code == 200\n        assert response.json() == user_in\n\n    def test_read_user(self):\n        user_in = {'user_id': '1', 'name': 'John Doe', 'email': 'john@example.com'}\n        client.post('/users', json=user_in)\n        response = client.get('/users/1')\n        assert response.status_code == 200\n        assert response.json() == {'user_id': '1'}\n\n    def test_create_workout(self):\n        workout_in = {'user_id': '1', 'workout_name': 'Workout 1', 'description': 'This is a workout'}\n        response = client.post('/workouts', json=workout_in)\n        assert response.status_code == 200\n        assert response.json() == workout_in\n\n    def test_read_workout(self):\n        workout_in = {'user_id': '1', 'workout_name': 'Workout 1', 'description': 'This is a workout'}\n        client.post('/workouts', json=workout_in)\n        response = client.get('/workouts/1')\n        assert response.status_code == 200\n        assert response.json() == {'user_id': '1'}\n\n    def test_create_progress(self):\n        progress_in = {'user_id': '1', 'progress': 'Progress 1'}\n        response = client.post('/progress', json=progress_in)\n        assert response.status_code == 200\n        assert response.json() == progress_in\n\n    def test_read_progress(self):\n        progress_in = {'user_id': '1', 'progress': 'Progress 1'}\n        client.post('/progress', json=progress_in)\n        response = client.get('/progress/1')\n        assert response.status_code == 200\n        assert response.json() == {'user_id': '1'}\n"
+      },
+      {
+        "filename": "test_models.py",
+        "description": "tests for models",
+        "code": "\nimport pytest\nfrom models import User, Workout, Progress\n\nclass TestModels:\n    def test_user_init(self):\n        user = User(user_id='1', name='John Doe', email='john@example.com')\n        assert user.user_id == '1'\n        assert user.name == 'John Doe'\n        assert user.email == 'john@example.com'\n\n    def test_workout_init(self):\n        workout = Workout(user_id='1', workout_name='Workout 1', description='This is a workout')\n        assert workout.user_id == '1'\n        assert workout.workout_name == 'Workout 1'\n        assert workout.description == 'This is a workout'\n\n    def test_progress_init(self):\n        progress = Progress(user_id='1', progress='Progress 1')\n        assert progress.user_id == '1'\n        assert progress.progress == 'Progress 1'\n"
+      },
+      {
+        "filename": "test_service.py",
+        "description": "tests for service",
+        "code": "\nimport pytest\nfrom service import UserService, WorkoutService, ProgressService\nfrom models import User, Workout, Progress\n\nclass TestService:\n    def test_user_service_create_user(self):\n        user_service = UserService()\n        user_in = {'user_id': '1', 'name': 'John Doe', 'email': 'john@example.com'}\n        user = user_service.create_user(User(**user_in))\n        assert user.user_id == '1'\n        assert user.name == 'John Doe'\n        assert user.email == 'john@example.com'\n\n    def test_user_service_read_user(self):\n        user_service = UserService()\n        user_in = {'user_id': '1', 'name': 'John Doe', 'email': 'john@example.com'}\n        user_service.create_user(User(**user_in))\n        user = user_service.get_user('1')\n        assert user.user_id == '1'\n\n    def test_workout_service_create_workout(self):\n        workout_service = WorkoutService()\n        workout_in = {'user_id': '1', 'workout_name': 'Workout 1', 'description': 'This is a workout'}\n        workout = workout_service.create_workout(Workout(**workout_in))\n        assert workout.user_id == '1'\n        assert workout.workout_name == 'Workout 1'\n        assert workout.description == 'This is a workout'\n\n    def test_workout_service_read_workout(self):\n        workout_service = WorkoutService()\n        workout_in = {'user_id': '1', 'workout_name': 'Workout 1', 'description': 'This is a workout'}\n        workout_service.create_workout(Workout(**workout_in))\n        workout = workout_service.get_workout('1')\n        assert workout.user_id == '1'\n\n    def test_progress_service_create_progress(self):\n        progress_service = ProgressService()\n        progress_in = {'user_id': '1', 'progress': 'Progress 1'}\n        progress = progress_service.create_progress(Progress(**progress_in))\n        assert progress.user_id == '1'\n        assert progress.progress == 'Progress 1'\n\n    def test_progress_service_read_progress(self):\n        progress_service = ProgressService()\n        progress_in = {'user_id': '1', 'progress': 'Progress 1'}\n        progress_service.create_progress(Progress(**progress_in))\n        progress = progress_service.get_progress('1')\n        assert progress.user_id == '1'\n"
+      }
+    ]
+  },
+  "devops": {
+    "files": [
+      {
+        "filename": "requirements.txt",
+        "description": "Python dependencies",
+        "content": "fastapi\nuvicorn\npydantic"
+      },
+      {
+        "filename": "Dockerfile",
+        "description": "Docker container configuration",
+        "content": "FROM python:3.10-slim\nWORKDIR /app\nCOPY . .\nRUN pip install -r requirements.txt\nCMD [\"uvicorn\",\"api:app\",\"--host\",\"0.0.0.0\",\"--port\",\"8000\"]"
+      },
+      {
+        "filename": "docker-compose.yml",
+        "description": "Container orchestration configuration",
+        "content": "version: '3'\nservices:\n  app:\n    build: .\n    ports:\n      - \"8000:8000\"\n    environment:\n      - ENVIRONMENT=production"
+      }
+    ]
+  }
+}

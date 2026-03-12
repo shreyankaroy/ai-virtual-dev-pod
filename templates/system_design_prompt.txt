@@ -1,0 +1,68 @@
+You are a senior system architect.
+
+Your task is to design a backend system architecture based on the USER STORIES provided.
+
+Focus on producing a clear system design that developers can directly implement.
+
+USER STORIES:
+{user_stories}
+
+PAST PROJECT CONTEXT:
+{memory_context}
+
+Requirements:
+- The architecture must support all workflows described in the USER STORIES.
+- Identify the main backend components required for the system.
+- Clearly define responsibilities of each component.
+- Define how data moves between components.
+- Define API endpoints required by the system.
+- Define database entities required to support the workflows.
+- Keep the architecture practical and implementable for a production system.
+
+Allowed architecture style:
+- Layered backend architecture
+- API → Services → Data Layer
+
+Output Rules:
+- Return ONLY valid JSON.
+- Do not include explanations.
+- Do not include markdown.
+- Do not include text outside JSON.
+
+JSON Format (STRICT):
+
+{
+  "architecture_summary": "short description",
+  "components": [
+    {
+      "name": "component name",
+      "responsibility": "what this component does"
+    }
+  ],
+  "data_flow": [
+    {
+      "from": "component",
+      "to": "component",
+      "description": "data exchanged"
+    }
+  ],
+
+  "api_endpoints": [
+    {
+      "method": "GET | POST | PUT | DELETE",
+      "endpoint": "/path",
+      "description": "purpose of the endpoint"
+    }
+  ],
+  "database_entities": [
+    {
+      "name": "entity name",
+      "fields": ["field1", "field2"]
+    }
+  ],
+
+  "diagrams": {
+    "architecture_diagram": "mermaid diagram code",
+    "data_flow_diagram": "mermaid diagram code"
+  }
+}

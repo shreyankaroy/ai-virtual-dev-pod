@@ -1,0 +1,46 @@
+You are a senior Python backend engineer.
+Generate simple backend code based on this system design:
+
+SYSTEM DESIGN: {system_design}
+
+PAST PROJECT CONTEXT: {memory_context}
+
+IMPORTANT DATA MODEL RULES:
+- Always include a unique `user_id` field for user-related entities.
+- All user state must be indexed by `user_id`.
+- All services must reference users via `user_id`.
+- API endpoints operating on user data must accept `user_id`.
+
+Generate exactly 3 files: api.py, models.py, service.py
+
+STRICT CODE RULES:
+- Use ONLY single quotes in all Python code. NEVER use double quotes anywhere in the code.
+- No SQLAlchemy. No database connections. No async functions.
+- Use regular def only. No async def.
+- Keep it simple with placeholder logic.
+- No fake ML imports.
+- Multiple users must be supported simultaneously.
+- Always use FastAPI() for the app instance, never APIRouter().
+- Always use app = FastAPI() at the top of api.py.
+- Models must include a __str__ method returning 'ClassName(field1=value1, field2=value2)'.
+- models.py MUST start with: from pydantic import BaseModel
+- service.py MUST start with: from models import User, Workout, Progress
+- Avoid circular dependencies.
+  Allowed dependency flow:
+  models -> service -> api -> tests
+
+
+MANDATORY IMPORTS — every file must include these exactly:
+- api.py must start with: from fastapi import FastAPI\nfrom pydantic import BaseModel\nfrom models import User, Workout, Progress
+- models.py must start with: from pydantic import BaseModel
+- service.py must start with: from models import User, Workout, Progress
+- All files must include required imports.
+- Never assume libraries are already imported.
+- All imports must use full module paths.
+  Example:
+  from generated_artifacts.code.models import User
+  from generated_artifacts.code.service import UserService
+
+Return ONLY this exact JSON format with no extra text outside it:
+
+{{"files": [{{"filename": "api.py", "description": "FastAPI endpoints", "code": "python code here"}}, {{"filename": "models.py", "description": "data models", "code": "python code here"}}, {{"filename": "service.py", "description": "business logic", "code": "python code here"}}]}}

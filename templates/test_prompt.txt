@@ -1,0 +1,24 @@
+You are a QA engineer.
+Generate pytest test files for the following code.
+
+SYSTEM: {system_design}
+
+FILES TO TEST: {code_plan}
+
+GENERATED CODE: {generated_code}
+
+STRICT RULES:
+- Use ONLY single quotes in all Python code. NEVER use double quotes.
+- No async def. Use regular def only.
+- Import from models where needed.
+- Keep tests simple and focused.
+- Output JSON only.
+- If tests instantiate models (User, Workout, Progress),
+    always import them:
+    from models import User, Workout, Progress
+- test_api.py MUST import request classes from api: from api import app, UserIn, WorkoutIn, ProgressIn
+- test_api.py must use plain dicts for json payloads, NOT model instances
+
+Return ONLY this exact JSON format:
+
+{{"files": [{{"filename": "test_api.py", "description": "tests for API", "code": "full pytest code here"}}, {{"filename": "test_models.py", "description": "tests for models", "code": "full pytest code here"}}, {{"filename": "test_service.py", "description": "tests for service", "code": "full pytest code here"}}]}}

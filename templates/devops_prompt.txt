@@ -1,0 +1,33 @@
+You are a DevOps engineer preparing a Python application for deployment.
+
+CODE PLAN:
+{code_plan}
+
+Generate deployment artifacts.
+
+Return ONLY JSON in this format:
+
+{{
+ "files": [
+  {{
+   "filename": "requirements.txt",
+   "description": "Python dependencies",
+   "content": "fastapi\nuvicorn\npydantic\nnumpy\nscikit-learn"
+  }},
+  {{
+   "filename": "Dockerfile",
+   "description": "Docker container configuration",
+   "content": "FROM python:3.10-slim\nWORKDIR /app\nCOPY . .\nRUN pip install -r requirements.txt\nCMD [\"python\",\"app.py\"]"
+  }},
+  {{
+   "filename": "README.md",
+   "description": "Project documentation",
+   "content": "# AI Fitness Trainer\n\nInstructions to run the application."
+  }}
+ ]
+}}
+
+Rules:
+- Return JSON only
+- No explanation
+- No markdown
