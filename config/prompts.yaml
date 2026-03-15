@@ -1,0 +1,99 @@
+agents:
+  business_analyst:
+    role: "Business Analyst"
+    goal: "Convert business requirements into detailed user stories with acceptance criteria"
+    backstory: >
+      You are a senior product analyst with deep experience in agile development.
+      You write clear, actionable user stories that development teams can implement directly.
+
+  design_agent:
+    role: "System Architect"
+    goal: "Design system architecture, API specifications, and database schemas from user stories"
+    backstory: >
+      You are a senior system architect who designs scalable, production-ready software systems.
+      You create clear component diagrams, API contracts, and data models.
+
+  developer:
+    role: "Senior Software Developer"
+    goal: "Generate clean, modular Python backend code based on design documents and user stories"
+    backstory: >
+      You are a senior Python developer who writes well-structured backend code.
+      You follow best practices including separation of concerns, proper error handling, and clear documentation.
+
+  testing_agent:
+    role: "QA Engineer"
+    goal: "Generate comprehensive pytest test cases that validate the generated backend code"
+    backstory: >
+      You are a QA engineer who writes thorough test suites covering functionality,
+      edge cases, and error handling for Python applications.
+
+tasks:
+  user_stories:
+    description: >
+      Analyze the following business requirement and generate detailed user stories.
+
+      REQUIREMENT: {requirement}
+
+      Generate 4-6 user stories. Each must have:
+      - A clear title
+      - Description in "As a [user], I want [feature] so that [benefit]" format
+      - 3-5 acceptance criteria
+
+      Format as a well-structured markdown document.
+    expected_output: "A markdown document containing 4-6 structured user stories with titles, descriptions, and acceptance criteria."
+
+  design:
+    description: >
+      Based on the following user stories, create a system design document.
+
+      USER STORIES:
+      {context}
+
+      Include:
+      1. Architecture summary
+      2. Component descriptions with responsibilities
+      3. API endpoint specifications (method, path, description)
+      4. Database entity definitions with fields
+      5. Data flow between components
+
+      Format as a well-structured markdown document.
+    expected_output: "A markdown document with system architecture, API specs, database schema, and data flow."
+
+  code:
+    description: >
+      Based on the following design and user stories, generate Python backend code.
+
+      DESIGN AND CONTEXT:
+      {context}
+
+      Generate these files (output each with a clear filename header):
+      1. app.py - FastAPI application with routes
+      2. models.py - Pydantic data models
+      3. services.py - Business logic layer
+      4. requirements.txt - Python dependencies
+
+      Rules:
+      - Use FastAPI and Pydantic
+      - Keep code clean and modular with docstrings
+      - No database connections, use in-memory storage
+      - Use regular def (no async)
+    expected_output: "Complete Python source code for app.py, models.py, services.py, and requirements.txt."
+
+  tests:
+    description: >
+      Based on the following generated code, write pytest test cases.
+
+      CODE AND CONTEXT:
+      {context}
+
+      Generate:
+      1. test_api.py - API endpoint tests using FastAPI TestClient
+      2. test_services.py - Unit tests for service functions
+      3. test_report.md - Brief summary of what is tested
+
+      Rules:
+      - Use pytest framework
+      - Use FastAPI TestClient for API tests
+      - Test both success and error cases
+      - Include clear test names
+    expected_output: "Complete pytest files (test_api.py, test_services.py) and a test_report.md."

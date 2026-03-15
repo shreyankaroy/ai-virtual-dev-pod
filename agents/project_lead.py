@@ -1,193 +1,155 @@
-from utils.logger import log
-from utils.artifact_manager import save_artifact
-from execution.code_generator import generate_code_files
-from execution.devops_generator import generate_devops_files
-from execution.test_runner import run_tests as execute_tests
-from execution.debug_generator import apply_debug_fixes
-from execution.test_generator import generate_test_files
-from utils.memory_manager import update_memory
-from memory.memory_retriever import retrieve_memory
+"""
+Project Lead Agent — orchestrates the full AI development pipeline.
+Runs each agent step-by-step using CrewAI, saving artifacts and updating status.
+"""
+
+import os
+import time
+from dotenv import load_dotenv
+from crewai import Crew, Process
+
+from agents.business_analyst import create_business_analyst
+from agents.design_agent import create_design_agent
+from agents.developer_agent import create_developer
+from agents.testing_agent import create_testing_agent
+
+from tasks.user_story_task import create_user_story_task
+from tasks.design_task import create_design_task
+from tasks.dev_task import create_dev_task
+from tasks.testing_task import create_testing_task
+
+from artifacts.artifact_manager import save_artifact
+from memory.vector_store import VectorStore
+
+load_dotenv()
+
+# Max characters to pass between agents (keeps within Groq's TPM limits)
+MAX_CONTEXT = 3000
 
 
-class ProjectLeadAgent:
-    """
-    The Project Lead orchestrates the AI development workflow
-    using a shared project_state.
-    """
+def _truncate(text, limit=MAX_CONTEXT):
+    """Truncate text to fit within token limits while keeping useful content."""
+    if len(text) <= limit:
+        return text
+    return text[:limit] + "\n\n[... truncated for brevity ...]"
 
-    def __init__(
-        self,
-        business_analyst,
-        system_designer,
-        developer,
-        tester,
-        devops,
-        debugger
-    ):
-        self.business_analyst = business_analyst
-        self.system_designer = system_designer
-        self.developer = developer
-        self.tester = tester
-        self.devops = devops
-        self.debugger = debugger
 
-    # ---------------------------------------------------
-    # BUSINESS ANALYST
-    # ---------------------------------------------------
+class ProjectLead:
+    """Orchestrates the AI development workflow using CrewAI agents."""
 
-    def run_business_analyst(self, state):
+    AGENTS = ["Business Analyst", "Design Agent", "Developer Agent", "Testing Agent"]
 
-        if state.get("memory_context") is None:
+    def __init__(self):
+        # CrewAI uses litellm — pass model as "groq/model-name"
+        # GROQ_API_KEY is read from env automatically
+        model_name = os.getenv("MODEL_NAME", "llama-3.1-8b-instant")
+        self.llm = f"groq/{model_name}"
 
-            memory_context = retrieve_memory(state["idea"])
-            state["memory_context"] = memory_context
+        self.ba = create_business_analyst(self.llm)
+        self.designer = create_design_agent(self.llm)
+        self.developer = create_developer(self.llm)
+        self.tester = create_testing_agent(self.llm)
 
-            log.info(f"Memory context loaded: {memory_context}")
+        try:
+            self.vector_store = VectorStore()
+        except Exception:
+            self.vector_store = None
 
-        log.info("Project Lead: Requesting user stories")
+    def _run_single(self, agent, task, retries=3):
+        """Run a single agent/task pair with retry + backoff for rate limits."""
+        for attempt in range(retries):
+            try:
+                crew = Crew(
+                    agents=[agent],
+                    tasks=[task],
+                    process=Process.sequential,
+                    verbose=True,
+                )
+                result = crew.kickoff()
+                return result.raw
+            except Exception as e:
+                err = str(e).lower()
+                if "rate" in err or "limit" in err or "429" in err:
+                    wait = 10 * (attempt + 1)
+                    print(f"  ⏳ Rate limited. Waiting {wait}s before retry {attempt + 2}/{retries}...")
+                    time.sleep(wait)
+                else:
+                    raise
+        raise RuntimeError(f"Agent failed after {retries} retries due to rate limits.")
 
-        user_stories = self.business_analyst.generate_user_stories(
-            state["idea"],
-            state["memory_context"]
-        )
+    def run(self, requirement, on_status=None):
+        """
+        Run the full development pipeline.
 
-        state["user_stories"] = user_stories
+        Args:
+            requirement: The business requirement string.
+            on_status: Optional callback(agent_name, status) for UI updates.
 
-        save_artifact("user_stories.json", user_stories)
+        Returns:
+            dict with keys: user_stories, design, code, tests
+        """
+        results = {}
+        comm_log = []
 
-        update_memory("user_stories", user_stories)
+        def status(agent, state, msg=""):
+            if on_status:
+                on_status(agent, state)
+            log_msg = f"Project Lead → {agent}: {state}"
+            if msg:
+                log_msg += f" — {msg}"
+            comm_log.append(log_msg)
+            print(f"  {log_msg}")
 
-    # ---------------------------------------------------
-    # SYSTEM DESIGN
-    # ---------------------------------------------------
+        # ── Step 1: Business Analyst ─────────────────────────
+        status("Business Analyst", "running", "Generating user stories")
+        task = create_user_story_task(self.ba, requirement)
+        user_stories = self._run_single(self.ba, task)
+        results["user_stories"] = user_stories
+        save_artifact("requirements/user_stories.md", user_stories)
+        self._store_memory("user_stories", user_stories)
+        status("Business Analyst", "completed", "User stories generated")
 
-    def run_system_designer(self, state):
+        # Brief pause to respect rate limits
+        time.sleep(5)
 
-        log.info("Project Lead: Requesting system design")
+        # ── Step 2: Design Agent ─────────────────────────────
+        status("Design Agent", "running", "Creating system design")
+        task = create_design_task(self.designer, _truncate(user_stories))
+        design = self._run_single(self.designer, task)
+        results["design"] = design
+        save_artifact("design/architecture.md", design)
+        self._store_memory("design", design)
+        status("Design Agent", "completed", "Design document created")
 
-        system_design = self.system_designer.design_system(
-            state["user_stories"]["stories"],
-            state.get("memory_context")
-        )
+        time.sleep(5)
 
-        state["system_design"] = system_design
+        # ── Step 3: Developer Agent ──────────────────────────
+        status("Developer Agent", "running", "Generating backend code")
+        task = create_dev_task(self.developer, _truncate(user_stories, 1500), _truncate(design, 1500))
+        code = self._run_single(self.developer, task)
+        results["code"] = code
+        save_artifact("code/backend/generated_code.md", code)
+        self._store_memory("code", code)
+        status("Developer Agent", "completed", "Code generated")
 
-        save_artifact("architecture.json", system_design)
+        time.sleep(5)
 
-        update_memory("system_design", system_design)
+        # ── Step 4: Testing Agent ────────────────────────────
+        status("Testing Agent", "running", "Generating test cases")
+        task = create_testing_task(self.tester, _truncate(code))
+        tests = self._run_single(self.tester, task)
+        results["tests"] = tests
+        save_artifact("tests/test_cases.md", tests)
+        self._store_memory("tests", tests)
+        status("Testing Agent", "completed", "Test cases generated")
 
-    # ---------------------------------------------------
-    # DEVELOPER
-    # ---------------------------------------------------
+        results["comm_log"] = comm_log
+        return results
 
-    def run_developer(self, state):
-
-        log.info("Project Lead: Requesting code generation")
-
-        code_plan = self.developer.generate_code(
-            state["system_design"],
-            state.get("memory_context")
-        )
-
-        state["code_plan"] = code_plan
-
-        save_artifact("code_plan.json", code_plan)
-
-        generate_code_files(code_plan)
-
-        update_memory("code_plan", code_plan)
-
-    # ---------------------------------------------------
-    # TESTER
-    # ---------------------------------------------------
-
-    def run_tester(self, state):
-
-        log.info("Project Lead: Requesting test cases")
-
-        tests = self.tester.generate_tests(
-            state["system_design"],      # ← add this back
-            state["code_plan"]
-        )
-
-        state["tests"] = tests
-        save_artifact("test_plan.json", tests)
-        generate_test_files(tests)
-        update_memory("tests", tests)
-
-        passed, test_output = execute_tests()
-        state["test_output"] = test_output
-
-        if passed:
-            state["test_results"] = "pass"
-            log.success("All tests passed")
-        else:
-            state["test_results"] = "fail"
-            log.warning("Tests failed")
-
-    # ---------------------------------------------------
-    # DEBUGGER
-    # ---------------------------------------------------
-
-    def run_debugger(self, state):
-
-        MAX_DEBUG_ATTEMPTS = 3
-
-        for attempt in range(1, MAX_DEBUG_ATTEMPTS + 1):
-
-            log.warning(
-                f"Project Lead: Debugging code (attempt {attempt}/{MAX_DEBUG_ATTEMPTS})"
-            )
-
-            failing_tests = state.get("test_output", "Tests failed")
-
-            fixes = self.debugger.fix_code(
-                state["code_plan"]["files"],
-                failing_tests
-            )
-
-            apply_debug_fixes(fixes)
-
-            state.setdefault("code_plan", {})
-            state["code_plan"]["debug_fixes"] = fixes
-
-            passed, test_output = execute_tests()
-
-            state["test_output"] = test_output
-
-            if passed:
-
-                state["test_results"] = "pass"
-
-                log.success("Debug successful — all tests passed")
-
-                return
-
-            log.warning(f"Debug attempt {attempt} failed")
-
-        log.error("Max debug attempts reached — moving on")
-
-        state["test_results"] = "fail"
-
-    # ---------------------------------------------------
-    # DEVOPS
-    # ---------------------------------------------------
-
-    def run_devops(self, state):
-
-        log.info("Project Lead: Generating deployment configuration")
-
-        devops_files = self.devops.generate_devops(
-            state["code_plan"]["files"],
-            state["tests"]
-        )
-
-        state["devops"] = devops_files
-
-        save_artifact("devops_plan.json", devops_files)
-
-        generate_devops_files(devops_files)
-
-        update_memory("devops", devops_files)
-
-        log.success("DevOps configuration generated")
+    def _store_memory(self, doc_id, text):
+        """Store artifact in ChromaDB vector memory."""
+        if self.vector_store:
+            try:
+                self.vector_store.add(doc_id, text)
+            except Exception:
+                pass

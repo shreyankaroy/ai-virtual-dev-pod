@@ -10,7 +10,7 @@ def run_tests():
 
         code_path = os.path.abspath("generated_artifacts/code")
         existing = env.get("PYTHONPATH", "")
-        env["PYTHONPATH"] = f"{code_path};{existing}" if existing else code_path
+        env["PYTHONPATH"] = f"{code_path}{os.pathsep}{existing}" if existing else code_path
 
         result = subprocess.run(
             ["pytest", "generated_artifacts/tests", "-v"],
