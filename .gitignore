@@ -2,8 +2,13 @@ venv/
 __pycache__/
 *.pyc
 .env
+
 logs/
+execution_logs/
+
 generated_code/
 project_artifacts/
+
 .DS_Store
+
 memory/chromadb_store/
