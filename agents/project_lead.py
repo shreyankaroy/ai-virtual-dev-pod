@@ -19,6 +19,7 @@ from tasks.dev_task import create_dev_task
 from tasks.testing_task import create_testing_task
 
 from artifacts.artifact_manager import save_artifact
+from replay.replay_engine import ExecutionTracker
 from memory.vector_store import VectorStore
 
 load_dotenv()
@@ -90,6 +91,7 @@ class ProjectLead:
         """
         results = {}
         comm_log = []
+        tracker = ExecutionTracker()
 
         def status(agent, state, msg=""):
             if on_status:
@@ -102,11 +104,13 @@ class ProjectLead:
 
         # ── Step 1: Business Analyst ─────────────────────────
         status("Business Analyst", "running", "Generating user stories")
+        tracker.record_step("Business Analyst", "running", requirement)
         task = create_user_story_task(self.ba, requirement)
         user_stories = self._run_single(self.ba, task)
         results["user_stories"] = user_stories
         save_artifact("requirements/user_stories.md", user_stories)
         self._store_memory("user_stories", user_stories)
+        tracker.record_step("Business Analyst", "completed", requirement, user_stories)
         status("Business Analyst", "completed", "User stories generated")
 
         # Brief pause to respect rate limits
@@ -114,34 +118,43 @@ class ProjectLead:
 
         # ── Step 2: Design Agent ─────────────────────────────
         status("Design Agent", "running", "Creating system design")
+        tracker.record_step("Design Agent", "running", "From user stories")
         task = create_design_task(self.designer, _truncate(user_stories))
         design = self._run_single(self.designer, task)
         results["design"] = design
         save_artifact("design/architecture.md", design)
         self._store_memory("design", design)
+        tracker.record_step("Design Agent", "completed", "From user stories", design)
         status("Design Agent", "completed", "Design document created")
 
         time.sleep(5)
 
         # ── Step 3: Developer Agent ──────────────────────────
         status("Developer Agent", "running", "Generating backend code")
+        tracker.record_step("Developer Agent", "running", "From user stories + design")
         task = create_dev_task(self.developer, _truncate(user_stories, 1500), _truncate(design, 1500))
         code = self._run_single(self.developer, task)
         results["code"] = code
         save_artifact("code/backend/generated_code.md", code)
         self._store_memory("code", code)
+        tracker.record_step("Developer Agent", "completed", "From user stories + design", code)
         status("Developer Agent", "completed", "Code generated")
 
         time.sleep(5)
 
         # ── Step 4: Testing Agent ────────────────────────────
         status("Testing Agent", "running", "Generating test cases")
+        tracker.record_step("Testing Agent", "running", "From generated code")
         task = create_testing_task(self.tester, _truncate(code))
         tests = self._run_single(self.tester, task)
         results["tests"] = tests
         save_artifact("tests/test_cases.md", tests)
         self._store_memory("tests", tests)
+        tracker.record_step("Testing Agent", "completed", "From generated code", tests)
         status("Testing Agent", "completed", "Test cases generated")
+
+        # Save execution log for replay
+        tracker.save()
 
         results["comm_log"] = comm_log
         return results
